@@ -50,9 +50,9 @@ const NavigationBar: React.FC<Props> = ({
           Some Recipes
         </Navbar.Brand>
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
-        <Navbar.Collapse id="basic-navbar-nav">
+        <Navbar.Collapse id="basic-navbar-nav" className="align-items-center">
           <Form
-            className="d-flex justify-content-center"
+            className="d-flex justify-content-center mt-2 mt-lg-0"
             style={{ flex: "1 1 0" }}
             onSubmit={searchRecipes}
           >
@@ -61,9 +61,10 @@ const NavigationBar: React.FC<Props> = ({
               placeholder="Search"
               value={searchTerm}
               onChange={({ target }) => setSearchTerm(target.value)}
+              style={{ height: "36px" }}
             />
           </Form>
-          <Nav style={{ flex: "1 1 0", justifyContent: "flex-end" }}>
+          <Nav style={{ flex: "1 1 0", justifyContent: "flex-end", alignItems: "center" }}>
             <Nav.Link href="/" active={location.pathname === "/"}>
               Home
             </Nav.Link>
@@ -77,28 +78,17 @@ const NavigationBar: React.FC<Props> = ({
               <>
                 <Nav.Link href={`/profile/${user.username}`}>Profile</Nav.Link>
                 <Nav.Link onClick={navLogout}>Logout</Nav.Link>
-                <Button title="Add new recipe" onClick={showNewModal} variant="outline-primary">
-                  +
-                </Button>
+                <Nav.Link onClick={showNewModal} className="nav-icon-btn nav-icon-btn-primary">
+                  <span className="nav-icon-btn-icon">+</span>
+                  <span className="nav-icon-btn-label">Add Recipe</span>
+                </Nav.Link>
               </>
             ) : null}
-            <Nav.Link
-              onClick={cycleTheme}
-              title={`Theme: ${themeMode}`}
-              style={{
-                width: "36px",
-                height: "36px",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                alignSelf: "center",
-                border: "1px solid var(--bs-border-color)",
-                borderRadius: "6px",
-                padding: 0,
-                fontSize: "16px",
-              }}
-            >
-              {themeIcon[themeMode] || themeIcon.system}
+            <Nav.Link onClick={cycleTheme} title={`Theme: ${themeMode}`} className="nav-icon-btn">
+              <span className="nav-icon-btn-icon">{themeIcon[themeMode] || themeIcon.system}</span>
+              <span className="nav-icon-btn-label">
+                {themeMode === "system" ? "System" : themeMode === "dark" ? "Dark" : "Light"}
+              </span>
             </Nav.Link>
           </Nav>
         </Navbar.Collapse>

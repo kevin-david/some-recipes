@@ -100,29 +100,30 @@ const RecipeView: React.FC<Props> = ({ loggedInUser }: Props) => {
 
   return (
     <div style={{ margin: "20px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-        <h2 style={{ margin: 0 }}>
-          {recipe.title}
-          {recipe.link ? (
-            <a
-              target="_blank"
-              title="open in new tab"
-              style={{ paddingLeft: "5px" }}
-              rel="noopener noreferrer"
-              href={recipe.link}
-            >
-              &#x2197;
-            </a>
-          ) : null}
-        </h2>
+      <h2>
+        {recipe.title}
+        {recipe.link ? (
+          <a
+            target="_blank"
+            title="open in new tab"
+            style={{ paddingLeft: "5px" }}
+            rel="noopener noreferrer"
+            href={recipe.link}
+          >
+            &#x2197;
+          </a>
+        ) : null}
+      </h2>
+      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "12px" }}>
         {loggedInUser ? (
           <Button
             size="sm"
             variant="outline-secondary"
             title="Save to favorites"
             onClick={saveRecipe}
+            style={{ minWidth: "90px" }}
           >
-            {isSaved ? "\u2764" : "\u2661"}
+            {isSaved ? "❤️ Saved" : "🤍 Save"}
           </Button>
         ) : null}
         {canEdit ? (
@@ -137,10 +138,16 @@ const RecipeView: React.FC<Props> = ({ loggedInUser }: Props) => {
         ) : null}
       </div>
       {recipe.tags && recipe.tags.length > 0 ? (
-        <div>
+        <div style={{ marginBottom: "12px" }}>
           Tags:{" "}
           {recipe.tags.map((t, index) => (
-            <Badge className="ms-1" bg="body-tertiary" text="body" key={t + index}>
+            <Badge
+              className="ms-1"
+              bg="body-tertiary"
+              text="body"
+              key={t + index}
+              style={{ fontSize: "14px", padding: "6px 10px" }}
+            >
               <Link to={`/search?type=tag&terms=${t}`}>{t}</Link>
             </Badge>
           ))}

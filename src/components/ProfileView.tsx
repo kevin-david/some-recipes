@@ -31,28 +31,22 @@ const ProfileView: React.FC<Props> = ({ loggedInUser: _loggedInUser }: Props) =>
   }
 
   return (
-    <div className="container">
-      <div className="row">
-        <div className="col align-self-end">
-          <h3 className="mt-auto">{user.name}</h3>
-        </div>
-      </div>
-      <div className="row">
-        {user.lists?.map((l, index) =>
-          l.recipes && l.recipes.length > 0 ? (
-            <div style={{ margin: "20px" }} key={l.title + index}>
-              <h4>{l.title}</h4>
-              <ListGroup>
-                {l.recipes?.map((r, rIndex) => (
-                  <ListGroup.Item key={r.id + rIndex}>
-                    <Link to={`/recipes/${r.id}`}>{r.title}</Link>
-                  </ListGroup.Item>
-                ))}
-              </ListGroup>
-            </div>
-          ) : null,
-        )}
-      </div>
+    <div>
+      <h3>{user.name}</h3>
+      {user.lists?.map((l, index) =>
+        l.recipes && l.recipes.length > 0 ? (
+          <div style={{ marginTop: "20px" }} key={l.title + index}>
+            <h4>{l.title}</h4>
+            <ListGroup>
+              {l.recipes?.map((r, rIndex) => (
+                <ListGroup.Item key={r.id + rIndex}>
+                  <Link to={`/recipes/${r.id}`}>{r.title}</Link>
+                </ListGroup.Item>
+              ))}
+            </ListGroup>
+          </div>
+        ) : null,
+      )}
     </div>
   );
 };
