@@ -25,6 +25,26 @@ users.get("/:username", async (c) => {
 users.post("/", async (c) => {
   const body = await c.req.json();
 
+  // Verify Turnstile token
+  if (!body.turnstileToken) {
+    return c.json({ error: "CAPTCHA verification required" }, 400);
+  }
+  const turnstileResponse = await fetch(
+    "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        secret: c.env.TURNSTILE_SECRET,
+        response: body.turnstileToken,
+      }),
+    },
+  );
+  const turnstileResult = await turnstileResponse.json<{ success: boolean }>();
+  if (!turnstileResult.success) {
+    return c.json({ error: "CAPTCHA verification failed" }, 400);
+  }
+
   if (!body.password || body.password.length < 3) {
     return c.json({ error: "password must be at least 3 characters long" }, 400);
   }

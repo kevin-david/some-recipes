@@ -7,9 +7,23 @@ interface Props {
   user: User | null;
   logout: () => void;
   showNewModal: () => void;
+  themeMode: string;
+  cycleTheme: () => void;
 }
 
-const NavigationBar: React.FC<Props> = ({ user, logout, showNewModal }: Props) => {
+const themeIcon: Record<string, string> = {
+  light: "\u2600",
+  dark: "\u263E",
+  system: "\uD83D\uDCBB",
+};
+
+const NavigationBar: React.FC<Props> = ({
+  user,
+  logout,
+  showNewModal,
+  themeMode,
+  cycleTheme,
+}: Props) => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const location = useLocation();
@@ -30,7 +44,7 @@ const NavigationBar: React.FC<Props> = ({ user, logout, showNewModal }: Props) =
   };
 
   return (
-    <Navbar expand="lg" bg="light">
+    <Navbar expand="lg" bg="body-tertiary">
       <div className="container">
         <Navbar.Brand href="/" style={{ flex: "1 1 0" }}>
           Some Recipes
@@ -68,6 +82,24 @@ const NavigationBar: React.FC<Props> = ({ user, logout, showNewModal }: Props) =
                 </Button>
               </>
             ) : null}
+            <Nav.Link
+              onClick={cycleTheme}
+              title={`Theme: ${themeMode}`}
+              style={{
+                width: "36px",
+                height: "36px",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                alignSelf: "center",
+                border: "1px solid var(--bs-border-color)",
+                borderRadius: "6px",
+                padding: 0,
+                fontSize: "16px",
+              }}
+            >
+              {themeIcon[themeMode] || themeIcon.system}
+            </Nav.Link>
           </Nav>
         </Navbar.Collapse>
       </div>

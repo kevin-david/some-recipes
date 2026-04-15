@@ -17,7 +17,7 @@ search.get("/", async (c) => {
   }
 
   if (type === "tag" || type === "tags") {
-    return c.json(await searchByTags(c.env.DB, terms.split(" ")));
+    return c.json(await searchByTags(c.env.DB, [terms]));
   }
 
   return c.json({ error: "invalid search type, use 'title' or 'tag'" }, 400);

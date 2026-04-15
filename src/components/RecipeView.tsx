@@ -35,6 +35,15 @@ const RecipeView: React.FC<Props> = ({ loggedInUser }: Props) => {
   }, [id, loggedInUser]);
 
   React.useEffect(() => {
+    if (recipe) {
+      document.title = `${recipe.title} — Some Recipes`;
+    }
+    return () => {
+      document.title = "Some Recipes";
+    };
+  }, [recipe]);
+
+  React.useEffect(() => {
     const favList = loggedInUser?.lists.find((l) => l.title === "Favorites");
     if (favList) {
       if (favList.recipes.find((r) => r.id === id)) {
@@ -56,10 +65,11 @@ const RecipeView: React.FC<Props> = ({ loggedInUser }: Props) => {
     } else {
       return;
     }
-    const response = await axios.put(`${apiBaseUrl}/lists/${list.id}`, {
-      ...list,
-      recipes: updatedRecipes,
-    });
+    const response = await axios.put(
+      `${apiBaseUrl}/lists/${list.id}`,
+      { ...list, recipes: updatedRecipes },
+      { headers: { Authorization: "Bearer " + loggedInUser?.token } },
+    );
     if (response.status === 200) {
       setIsSaved(!isSaved);
     }
@@ -90,40 +100,47 @@ const RecipeView: React.FC<Props> = ({ loggedInUser }: Props) => {
 
   return (
     <div style={{ margin: "20px" }}>
-      <h2>
-        {recipe.title}
-        {recipe.link ? (
-          <a
-            target="_blank"
-            title="open in new tab"
-            style={{ paddingLeft: "5px" }}
-            rel="noopener noreferrer"
-            href={recipe.link}
+      <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+        <h2 style={{ margin: 0 }}>
+          {recipe.title}
+          {recipe.link ? (
+            <a
+              target="_blank"
+              title="open in new tab"
+              style={{ paddingLeft: "5px" }}
+              rel="noopener noreferrer"
+              href={recipe.link}
+            >
+              &#x2197;
+            </a>
+          ) : null}
+        </h2>
+        {loggedInUser ? (
+          <Button
+            size="sm"
+            variant="outline-secondary"
+            title="Save to favorites"
+            onClick={saveRecipe}
           >
-            &#x2197;
-          </a>
-        ) : null}
-      </h2>
-      {loggedInUser ? (
-        <Button variant="outline-secondary" title="Save to favorites" onClick={saveRecipe}>
-          {isSaved ? "\u2764" : "\u2661"}
-        </Button>
-      ) : null}{" "}
-      {canEdit ? (
-        <>
-          <Button variant="outline-secondary" title="Edit recipe" onClick={handleShow}>
-            Edit
-          </Button>{" "}
-          <Button variant="outline-danger" title="Delete recipe" onClick={deleteRecipe}>
-            Delete
+            {isSaved ? "\u2764" : "\u2661"}
           </Button>
-        </>
-      ) : null}
+        ) : null}
+        {canEdit ? (
+          <>
+            <Button size="sm" variant="outline-secondary" title="Edit recipe" onClick={handleShow}>
+              Edit
+            </Button>
+            <Button size="sm" variant="outline-danger" title="Delete recipe" onClick={deleteRecipe}>
+              Delete
+            </Button>
+          </>
+        ) : null}
+      </div>
       {recipe.tags && recipe.tags.length > 0 ? (
         <div>
           Tags:{" "}
           {recipe.tags.map((t, index) => (
-            <Badge className="ms-1" bg="light" text="dark" key={t + index}>
+            <Badge className="ms-1" bg="body-tertiary" text="body" key={t + index}>
               <Link to={`/search?type=tag&terms=${t}`}>{t}</Link>
             </Badge>
           ))}
@@ -152,7 +169,8 @@ const RecipeView: React.FC<Props> = ({ loggedInUser }: Props) => {
       <h4>
         Ingredients{" "}
         <Button
-          variant="btn btn-light btn-sm"
+          variant="outline-secondary"
+          size="sm"
           title={wasCopied ? "Copied!" : "Copy to clipboard"}
           onClick={copyToClipboard}
         >

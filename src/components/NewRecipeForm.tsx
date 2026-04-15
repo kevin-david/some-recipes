@@ -46,6 +46,7 @@ const NewRecipeForm: React.FC<Props> = ({
   );
   const [tags, setTags] = useState<Item[]>(recipe?.tags ? recipe.tags.map((i) => newItem(i)) : []);
   const [isImporting, setIsImporting] = useState(false);
+  const [importError, setImportError] = useState("");
   const [isSupported, setIsSupported] = useState(true);
   const [image, setImage] = useState(recipe?.imageURL);
 
@@ -61,30 +62,78 @@ const NewRecipeForm: React.FC<Props> = ({
     }
   };
 
+  const applyParsedRecipe = (data: Record<string, unknown>) => {
+    setIngredients(
+      Array.isArray(data.recipeIngredient)
+        ? data.recipeIngredient.map((i: string) => newItem(i))
+        : [],
+    );
+    setDirections(
+      Array.isArray(data.recipeInstructions)
+        ? data.recipeInstructions.map((i: string | Record<string, string>) =>
+            newItem(typeof i === "string" ? i : i.text || ""),
+          )
+        : [],
+    );
+    setTitle((data.name as string) ?? "");
+    setTags(
+      Array.isArray(data.keywords)
+        ? data.keywords.map((t: string) => newItem(t))
+        : typeof data.keywords === "string"
+          ? data.keywords.split(",").map((t: string) => newItem(t.trim()))
+          : [],
+    );
+    const img = data.image;
+    setImage(typeof img === "string" ? img : Array.isArray(img) ? img[img.length - 1] : "");
+    setCookTime((data.cookTime as number) ?? 0);
+    setTotalTime((data.totalTime as number) ?? 0);
+    setPrepTime((data.prepTime as number) ?? 0);
+    const author = data.author;
+    setAuthor(
+      typeof author === "string" ? author : ((author as Record<string, string>)?.name ?? ""),
+    );
+  };
+
   const handleImport = async () => {
     setIsImporting(true);
-    const recipe = await axios.get(`${apiBaseUrl}/parse?url=${link}`);
-    if (recipe.status === 200 && recipe.data) {
-      setIngredients(
-        recipe.data.recipeIngredient
-          ? recipe.data.recipeIngredient.map((i: string) => newItem(i))
-          : [],
-      );
-      setDirections(
-        recipe.data.recipeInstructions
-          ? recipe.data.recipeInstructions.map((i: string) => newItem(i))
-          : [],
-      );
-      setTitle(recipe.data.name ?? "");
-      setTags(recipe.data.keywords ? recipe.data.keywords.map((t: string) => newItem(t)) : []);
-      setImage(recipe.data.image ?? "");
-      setCookTime(recipe.data.cookTime ?? 0);
-      setTotalTime(recipe.data.totalTime ?? 0);
-      setPrepTime(recipe.data.prepTime ?? 0);
-      setAuthor(recipe.data.author ?? "");
+    setImportError("");
+
+    try {
+      const result = await axios.get(`${apiBaseUrl}/parse?url=${link}`);
+      if (result.status === 200 && result.data && !result.data.error) {
+        applyParsedRecipe(result.data);
+      } else {
+        setImportError("No recipe found on this page");
+      }
+    } catch {
+      setImportError("Could not import recipe from this URL");
     }
+
     setIsImporting(false);
   };
+
+  const handlePasteJson = () => {
+    setImportError("");
+    navigator.clipboard
+      .readText()
+      .then((text) => {
+        try {
+          const data = JSON.parse(text);
+          if (data["@type"] === "Recipe" || data.recipeIngredient) {
+            applyParsedRecipe(data);
+          } else {
+            setImportError("Clipboard doesn't contain recipe JSON");
+          }
+        } catch {
+          setImportError("Clipboard doesn't contain valid JSON");
+        }
+      })
+      .catch(() => {
+        setImportError("Could not read clipboard — check browser permissions");
+      });
+  };
+
+  const consoleSnippet = `document.querySelectorAll('script[type="application/ld+json"]').forEach(s=>{try{const d=JSON.parse(s.textContent);const find=o=>o?.['@type']==='Recipe'?o:o?.['@graph']?.find(i=>i['@type']==='Recipe');const r=find(d);if(r){copy(JSON.stringify(r));console.log('Copied!',r.name)}}catch{}})`;
 
   const handleSubmit = async (event: React.FormEvent<EventTarget>) => {
     const newRec: NewRecipe = {
@@ -163,6 +212,37 @@ const NewRecipeForm: React.FC<Props> = ({
             </Button>
           </Col>
         </Row>
+        {importError && (
+          <div className="error" style={{ marginTop: "10px" }}>
+            {importError}
+          </div>
+        )}
+        <details style={{ marginTop: "10px", fontSize: "13px", color: "#666" }}>
+          <summary style={{ cursor: "pointer" }}>Import not working?</summary>
+          <div style={{ marginTop: "8px" }}>
+            <p>Some sites block automatic imports. You can manually copy the recipe data:</p>
+            <ol>
+              <li>Open the recipe page in a new tab</li>
+              <li>Open the browser console (F12 or Cmd+Option+J)</li>
+              <li>Paste this and press Enter:</li>
+            </ol>
+            <pre
+              style={{
+                background: "var(--bs-tertiary-bg)",
+                padding: "8px",
+                fontSize: "11px",
+                overflowX: "auto",
+                borderRadius: "4px",
+              }}
+            >
+              {consoleSnippet}
+            </pre>
+            <p>Then click the button below:</p>
+            <Button size="sm" variant="outline-secondary" onClick={handlePasteJson}>
+              Paste recipe from clipboard
+            </Button>
+          </div>
+        </details>
       </Form.Group>
       <Form.Group>
         <Form.Label>Image URL</Form.Label>

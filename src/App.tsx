@@ -13,7 +13,48 @@ import NewRecipe from "./components/NewRecipe";
 import { User } from "./types";
 import { Button } from "react-bootstrap";
 
+type ThemeMode = "light" | "dark" | "system";
+
+function resolveTheme(mode: ThemeMode) {
+  if (mode === "system") {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+  return mode;
+}
+
+function useTheme() {
+  const saved = (localStorage.getItem("some-recipes-theme") as ThemeMode) || "system";
+  const [mode, setMode] = useState<ThemeMode>(saved);
+  const [resolved, setResolved] = useState(resolveTheme(saved));
+
+  React.useEffect(() => {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = () => {
+      if (mode === "system") {
+        setResolved(mq.matches ? "dark" : "light");
+      }
+    };
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, [mode]);
+
+  React.useEffect(() => {
+    setResolved(resolveTheme(mode));
+    document.documentElement.setAttribute("data-bs-theme", resolveTheme(mode));
+  }, [mode]);
+
+  const cycleTheme = () => {
+    const order: ThemeMode[] = ["light", "dark", "system"];
+    const next = order[(order.indexOf(mode) + 1) % order.length];
+    setMode(next);
+    localStorage.setItem("some-recipes-theme", next);
+  };
+
+  return { theme: resolved, mode, cycleTheme };
+}
+
 const App: React.FC = () => {
+  const { theme, mode, cycleTheme } = useTheme();
   const [recipeList, setRecipeList] = useState(null);
   // Seed from localStorage synchronously to avoid flash of logged-out UI
   const savedToken = localStorage.getItem("some-recipes-user-token");
@@ -67,7 +108,13 @@ const App: React.FC = () => {
   return (
     <div>
       <Router>
-        <NavigationBar user={user} logout={logout} showNewModal={handleShow} />
+        <NavigationBar
+          user={user}
+          logout={logout}
+          showNewModal={handleShow}
+          themeMode={mode}
+          cycleTheme={cycleTheme}
+        />
         <div className="container" style={{ marginTop: "20px" }}>
           <Routes>
             <Route path="/recipes/:id" element={<RecipeView loggedInUser={user} />} />
@@ -81,7 +128,7 @@ const App: React.FC = () => {
               element={
                 <>
                   {user ? null : (
-                    <div className="p-5 mb-4 bg-light rounded-3">
+                    <div className="p-5 mb-4 bg-body-tertiary rounded-3">
                       <h1>No more annoying ads or long blog posts</h1>
                       <h2>Just some recipes</h2>
                       <p>
@@ -114,7 +161,7 @@ const App: React.FC = () => {
           />
         </div>
         <footer style={{ textAlign: "center", padding: "20px", color: "#ccc", fontSize: "12px" }}>
-          {__GIT_HASH__}
+          Version {__GIT_HASH__}
         </footer>
       </Router>
     </div>

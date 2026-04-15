@@ -12,23 +12,23 @@ code {
 }
 
 .error {
-  color: red;
-  background: lightgray;
+  color: #dc3545;
+  background: var(--bs-tertiary-bg);
   font-size: 15px;
   border-style: solid;
   border-radius: 5px;
-  border-color: red;
+  border-color: #dc3545;
   padding: 10px;
   margin: 10px;
 }
 
 .notification {
-  color: black;
-  background: lightgray;
+  color: var(--bs-body-color);
+  background: var(--bs-tertiary-bg);
   font-size: 15px;
   border-style: solid;
   border-radius: 5px;
-  border-color: black;
+  border-color: var(--bs-border-color);
   padding: 10px;
   margin: 10px;
 }

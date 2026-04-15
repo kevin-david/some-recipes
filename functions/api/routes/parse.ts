@@ -113,8 +113,11 @@ parse.get("/", async (c) => {
   try {
     const response = await fetch(url, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; RecipeParser/1.0)",
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       },
+      redirect: "follow",
     });
     const html = await response.text();
 
@@ -134,7 +137,19 @@ parse.get("/", async (c) => {
       }
     }
 
-    return c.json({ error: "no recipe found on page" }, 404);
+    const ldCount = (html.match(/application\/ld\+json/gi) || []).length;
+    return c.json(
+      {
+        error: "no recipe found on page",
+        debug: {
+          status: response.status,
+          ldBlocksFound: ldCount,
+          htmlLength: html.length,
+          body: html.length < 10000 ? html : undefined,
+        },
+      },
+      404,
+    );
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "unknown error";
     return c.json({ error: `failed to fetch URL: ${message}` }, 400);
