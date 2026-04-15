@@ -54,7 +54,7 @@ function useTheme() {
 }
 
 const App: React.FC = () => {
-  const { theme, mode, cycleTheme } = useTheme();
+  const { mode, cycleTheme } = useTheme();
   const [recipeList, setRecipeList] = useState(null);
   // Seed from localStorage synchronously to avoid flash of logged-out UI
   const savedToken = localStorage.getItem("some-recipes-user-token");
@@ -69,6 +69,27 @@ const App: React.FC = () => {
     const newUser = { ...response.data, token };
     setUser(newUser);
   };
+
+  const isDev =
+    window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+
+  React.useEffect(() => {
+    if (isDev) {
+      document.title = "[DEV] Some Recipes";
+      const link = document.querySelector("link[rel='icon']") as HTMLLinkElement;
+      if (link) {
+        const canvas = document.createElement("canvas");
+        canvas.width = 32;
+        canvas.height = 32;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.font = "28px serif";
+          ctx.fillText("\uD83D\uDEA7", 0, 28);
+          link.href = canvas.toDataURL();
+        }
+      }
+    }
+  }, [isDev]);
 
   React.useEffect(() => {
     try {

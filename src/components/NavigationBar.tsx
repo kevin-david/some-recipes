@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Button, Navbar, Nav, Form, FormControl } from "react-bootstrap";
+import { Navbar, Nav, Form, FormControl } from "react-bootstrap";
 import { useLocation, useNavigate } from "react-router-dom";
 import { User } from "../types";
 

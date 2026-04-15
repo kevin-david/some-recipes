@@ -36,10 +36,15 @@ const RecipeView: React.FC<Props> = ({ loggedInUser }: Props) => {
 
   React.useEffect(() => {
     if (recipe) {
-      document.title = `${recipe.title} — Some Recipes`;
+      const isDev =
+        window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+      const prefix = isDev ? "[DEV] " : "";
+      document.title = `${prefix}${recipe.title} — Some Recipes`;
     }
     return () => {
-      document.title = "Some Recipes";
+      const isDev =
+        window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+      document.title = isDev ? "[DEV] Some Recipes" : "Some Recipes";
     };
   }, [recipe]);
 

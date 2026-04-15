@@ -25,24 +25,26 @@ users.get("/:username", async (c) => {
 users.post("/", async (c) => {
   const body = await c.req.json();
 
-  // Verify Turnstile token
-  if (!body.turnstileToken) {
-    return c.json({ error: "CAPTCHA verification required" }, 400);
-  }
-  const turnstileResponse = await fetch(
-    "https://challenges.cloudflare.com/turnstile/v0/siteverify",
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        secret: c.env.TURNSTILE_SECRET,
-        response: body.turnstileToken,
-      }),
-    },
-  );
-  const turnstileResult = await turnstileResponse.json<{ success: boolean }>();
-  if (!turnstileResult.success) {
-    return c.json({ error: "CAPTCHA verification failed" }, 400);
+  // Verify Turnstile token (skip if secret not configured, e.g. local dev)
+  if (c.env.TURNSTILE_SECRET) {
+    if (!body.turnstileToken) {
+      return c.json({ error: "CAPTCHA verification required" }, 400);
+    }
+    const turnstileResponse = await fetch(
+      "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          secret: c.env.TURNSTILE_SECRET,
+          response: body.turnstileToken,
+        }),
+      },
+    );
+    const turnstileResult = await turnstileResponse.json<{ success: boolean }>();
+    if (!turnstileResult.success) {
+      return c.json({ error: "CAPTCHA verification failed" }, 400);
+    }
   }
 
   if (!body.password || body.password.length < 3) {

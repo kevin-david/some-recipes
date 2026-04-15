@@ -7,7 +7,6 @@ import { useNavigate } from "react-router-dom";
 
 declare global {
   interface Window {
-    turnstileReady?: Promise<void>;
     turnstile?: {
       render: (
         el: HTMLElement,
@@ -17,8 +16,6 @@ declare global {
     };
   }
 }
-
-const TURNSTILE_SITE_KEY = "0x4AAAAAAC9vZbsbj3aZh6sO";
 
 interface Props {
   appLogin: (user: User) => void;
@@ -33,16 +30,41 @@ const SignUpForm: React.FC<Props> = ({ appLogin }: Props) => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [turnstileToken, setTurnstileToken] = useState("");
+  const [siteKey, setSiteKey] = useState("");
   const turnstileRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    (window.turnstileReady || Promise.resolve()).then(() => {
+    axios.get(`${apiBaseUrl}/config`).then((res) => {
+      if (!cancelled && res.data.turnstileSiteKey) {
+        setSiteKey(res.data.turnstileSiteKey);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!siteKey || widgetIdRef.current) {
+      return;
+    }
+    const script = document.createElement("script");
+    script.src =
+      "https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad&render=explicit";
+    script.async = true;
+    const ready = new Promise<void>((resolve) => {
+      (window as unknown as Record<string, unknown>).onTurnstileLoad = resolve;
+    });
+    document.head.appendChild(script);
+
+    let cancelled = false;
+    ready.then(() => {
       if (!cancelled && window.turnstile && turnstileRef.current && !widgetIdRef.current) {
         const isDark = document.documentElement.getAttribute("data-bs-theme") === "dark";
         widgetIdRef.current = window.turnstile.render(turnstileRef.current, {
-          sitekey: TURNSTILE_SITE_KEY,
+          sitekey: siteKey,
           theme: isDark ? "dark" : "light",
           callback: (token: string) => setTurnstileToken(token),
         });
@@ -51,7 +73,7 @@ const SignUpForm: React.FC<Props> = ({ appLogin }: Props) => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [siteKey]);
 
   const handleSubmit = async (event: React.FormEvent<EventTarget>) => {
     const form = event.currentTarget as HTMLInputElement;
@@ -62,7 +84,7 @@ const SignUpForm: React.FC<Props> = ({ appLogin }: Props) => {
     if (form.checkValidity() === false) {
       return;
     }
-    if (!turnstileToken) {
+    if (siteKey && !turnstileToken) {
       setError("Please complete the CAPTCHA");
       return;
     }

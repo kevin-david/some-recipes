@@ -19,6 +19,12 @@ app.get("/health", (c) => {
   return c.json({ status: "ok" });
 });
 
+app.get("/config", (c) => {
+  return c.json({
+    turnstileSiteKey: c.env.TURNSTILE_SECRET ? "0x4AAAAAAC9vZbsbj3aZh6sO" : null,
+  });
+});
+
 app.route("/recipes", recipes);
 app.route("/users", users);
 app.route("/login", login);
