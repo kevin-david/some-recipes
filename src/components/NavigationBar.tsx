@@ -1,81 +1,78 @@
-import React, { useState } from 'react';
-import { Button, Navbar, Nav, Form, FormControl } from 'react-bootstrap'
-import { useLocation, useHistory } from 'react-router-dom';
-import { User } from '../types';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlus } from '@fortawesome/free-solid-svg-icons';
+import React, { useState } from "react";
+import { Button, Navbar, Nav, Form, FormControl } from "react-bootstrap";
+import { useLocation, useNavigate } from "react-router-dom";
+import { User } from "../types";
 
 interface Props {
-  user: User|null;
+  user: User | null;
   logout: () => void;
   showNewModal: () => void;
 }
 
-const NavigationBar: React.FC<Props> = ({user, logout, showNewModal}: Props) => {
-  let history = useHistory();
-  const [ searchTerm, setSearchTerm ] = useState('');
-  
+const NavigationBar: React.FC<Props> = ({ user, logout, showNewModal }: Props) => {
+  const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = useState("");
+  const location = useLocation();
+
   const hideLoggedIn = user !== null ? { display: "none" } : undefined;
 
   const searchRecipes = (event: React.FormEvent<EventTarget>) => {
-    history.push(`/search?type=title&terms=${searchTerm}`)
     event.preventDefault();
-  }
+    if (!searchTerm.trim()) {
+      return;
+    }
+    navigate(`/search?type=title&terms=${encodeURIComponent(searchTerm.trim())}`);
+  };
 
   const navLogout = () => {
     logout();
-    history.push('/');
-  }
-    return (
-        <Navbar  expand="lg" bg="light">
-        <div className="container">
-        <Navbar.Brand href="/">
-          <img
-            alt=""
-            src="/spoon-fork.svg"
-            width="30"
-            height="30"
-            className="d-inline-block align-top"  />{'   '}
+    navigate("/");
+  };
+
+  return (
+    <Navbar expand="lg" bg="light">
+      <div className="container">
+        <Navbar.Brand href="/" style={{ flex: "1 1 0" }}>
           Some Recipes
         </Navbar.Brand>
-        <Navbar.Toggle  aria-controls="basic-navbar-nav" />
+        <Navbar.Toggle aria-controls="basic-navbar-nav" />
         <Navbar.Collapse id="basic-navbar-nav">
-          <Form inline className="ml-auto mr-auto" onSubmit={searchRecipes} style={{ marginLeft: "20px", marginRight: "20px", marginTop: "10px"}}>
-            <FormControl 
-              type="text" 
-              placeholder="Search" 
-              value={searchTerm} 
-              onChange={({ target }) => setSearchTerm(target.value)} 
+          <Form
+            className="d-flex justify-content-center"
+            style={{ flex: "1 1 0" }}
+            onSubmit={searchRecipes}
+          >
+            <FormControl
+              type="text"
+              placeholder="Search"
+              value={searchTerm}
+              onChange={({ target }) => setSearchTerm(target.value)}
             />
           </Form>
-          <Nav className="ml-auto" >
-            
-            <Nav.Link href="/" active={useLocation().pathname === "/"}>Home</Nav.Link>
-            
-            
-            <Nav.Link href="/signup" style={hideLoggedIn} active={useLocation().pathname === "/signup"}>Sign Up</Nav.Link>
-            <Nav.Link href="/login" style={hideLoggedIn} active={useLocation().pathname === "/login"}>Login</Nav.Link>
-            {
-              user ? 
+          <Nav style={{ flex: "1 1 0", justifyContent: "flex-end" }}>
+            <Nav.Link href="/" active={location.pathname === "/"}>
+              Home
+            </Nav.Link>
+            <Nav.Link href="/signup" style={hideLoggedIn} active={location.pathname === "/signup"}>
+              Sign Up
+            </Nav.Link>
+            <Nav.Link href="/login" style={hideLoggedIn} active={location.pathname === "/login"}>
+              Login
+            </Nav.Link>
+            {user ? (
               <>
-              <Nav.Link href={`/profile/${user.username}`}>Profile</Nav.Link>
-              <Nav.Link onClick={navLogout}>Logout</Nav.Link>
-              <Button title="Add new recipe" onClick={showNewModal} variant="outline-primary">
-                <FontAwesomeIcon icon={faPlus}/>
-              </Button>
+                <Nav.Link href={`/profile/${user.username}`}>Profile</Nav.Link>
+                <Nav.Link onClick={navLogout}>Logout</Nav.Link>
+                <Button title="Add new recipe" onClick={showNewModal} variant="outline-primary">
+                  +
+                </Button>
               </>
-              : 
-              <Button title="Login to add recipes" onClick={showNewModal} variant="outline-primary" disabled>
-                <FontAwesomeIcon icon={faPlus}/>
-              </Button>
-
-            }
-            
+            ) : null}
           </Nav>
         </Navbar.Collapse>
-        </div>
-      </Navbar>
-    )
-}
+      </div>
+    </Navbar>
+  );
+};
 
 export default NavigationBar;

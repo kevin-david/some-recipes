@@ -1,75 +1,54 @@
-import express from 'express';
-import bcrypt from 'bcrypt';
-import UserSchema from '../models/UserSchema';
-import logger from '../utils/logger';
-import RecipeListSchema from '../models/RecipeListSchema';
+import { Hono } from "hono";
+import { Bindings } from "../types";
+import * as userDb from "../db/users";
+import { getPopulatedListsByUserId } from "../db/lists";
 
-const userRouter = express.Router();
+const users = new Hono<{ Bindings: Bindings }>();
 
-userRouter.get('/', async (_req, response) => {
-    const users = await UserSchema.find({});
-    response.json(users.map(u => {
-        const privateUser = u.toJSON();
-        delete privateUser.email;
-        return privateUser;
-    }));
-})
+users.get("/:username", async (c) => {
+  const user = await userDb.getUserByUsername(c.env.DB, c.req.param("username"));
+  if (!user) {
+    return c.json({ error: "user not found" }, 404);
+  }
 
-userRouter.post('/', async (request, response) => {
-    const body = request.body
-    if (body.password.length < 3) {
-      response.status(400).send({ error: 'password must be at least 3 characters long'})
-    }
-    const saltRounds = 10
-    const passwordHash = await bcrypt.hash(body.password, saltRounds)
-    const user = new UserSchema({
+  const lists = await getPopulatedListsByUserId(c.env.DB, user.id);
+
+  return c.json({
+    id: user.id,
+    username: user.username,
+    name: user.name,
+    lists,
+    createdAt: user.created_at,
+  });
+});
+
+users.post("/", async (c) => {
+  const body = await c.req.json();
+
+  if (!body.password || body.password.length < 3) {
+    return c.json({ error: "password must be at least 3 characters long" }, 400);
+  }
+  if (!body.username) {
+    return c.json({ error: "username is required" }, 400);
+  }
+  if (!body.email) {
+    return c.json({ error: "email is required" }, 400);
+  }
+
+  try {
+    const result = await userDb.createUser(c.env.DB, {
       username: body.username,
-      name: body.name,
+      name: body.name || "",
       email: body.email,
-      passwordHash,
-    })
-    const savedUser = await user.save()
-    logger.info('savedUser', savedUser);
-
-    const newList = new RecipeListSchema({
-        title: "Favorites",
-        user: savedUser._id
-    })
-    const uploadList = new RecipeListSchema({
-        title: "Uploads",
-        user: savedUser._id
+      password: body.password,
     });
-    const savedList = await newList.save();
-    const savedUploadList = await uploadList.save();
-    const found = await UserSchema.findByIdAndUpdate(savedUser._id, { lists: [ savedList._id, savedUploadList._id ]}, { new: true });
-    if (!found) {
-        response.status(404).end();
+    return c.json(result, 201);
+  } catch (e: unknown) {
+    if (e instanceof Error && e.message?.includes("UNIQUE")) {
+      return c.json({ error: "username or email already exists" }, 400);
     }
-    response.json(found?.toJSON())
-})
+    throw e;
+  }
+});
 
-userRouter.get('/:id', async (request, response) => {
-    const user = await UserSchema.findOne({username: request.params.id }).populate(
-        {
-          path: 'lists',
-          populate: { path: 'recipes'}
-        }
-    );
-    if (user) {
-        const privateUser = user.toJSON();
-        delete privateUser.email;
-        response.json(privateUser);
-    } else {
-        response.status(404).end()
-    }
-})
-
-userRouter.put('/:id', async (request, response) => {
-    const user = await UserSchema.findById(request.params.id);
-    if (!user) {
-        response.status(404).end();
-    }
-})
-
-
-export default userRouter;
+export default users;

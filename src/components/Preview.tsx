@@ -1,7 +1,7 @@
-import React from 'react';
-import { Recipe } from '../types';
-import { Link } from 'react-router-dom';
-import { Card, Button } from 'react-bootstrap';
+import React from "react";
+import { Recipe } from "../types";
+import { Link } from "react-router-dom";
+import { Card, Button } from "react-bootstrap";
 
 const Preview: React.FC<{ recipe: Recipe }> = ({ recipe }) => {
   const trimmedText = (): string => {
@@ -9,30 +9,36 @@ const Preview: React.FC<{ recipe: Recipe }> = ({ recipe }) => {
       return "...";
     }
     if (recipe.description.length > 300) {
-      return recipe.description.substr(0, 300) + "...";
+      return recipe.description.substring(0, 300) + "...";
     }
     return recipe.description;
-  }
+  };
 
   return (
-    <Card style={{ minHeight: "150px"}} >
+    <Card style={{ minHeight: "150px" }}>
       <Card.Body>
         <Card.Title>
-          <Link to={`/recipes/${recipe.recipeId}`}>{recipe.title}</Link>
+          <Link to={`/recipes/${recipe.id}`}>{recipe.title}</Link>
         </Card.Title>
-        {
-          recipe.imageURL ? 
-          <a href={`/recipes/${recipe.recipeId}`}>
-            <Card.Img src={recipe.imageURL} />
+        {/* TODO: import images to R2 instead of hotlinking external URLs */}
+        {recipe.imageURL ? (
+          <a href={`/recipes/${recipe.id}`}>
+            <Card.Img
+              src={recipe.imageURL}
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+              }}
+            />
           </a>
-          : <>
-              <Card.Text>{trimmedText()}</Card.Text>
-              <Button href={`/recipes/${recipe.recipeId}`}>View</Button>            
-            </>
-        }
+        ) : (
+          <>
+            <Card.Text>{trimmedText()}</Card.Text>
+            <Button href={`/recipes/${recipe.id}`}>View</Button>
+          </>
+        )}
       </Card.Body>
     </Card>
-  )
-}
+  );
+};
 
-export default Preview
+export default Preview;

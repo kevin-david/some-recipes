@@ -128,7 +128,7 @@ The backend routes the APIs, and everything else gets passed to the frontend. Si
 
 ```ts
 // send everything else to the frontend index
-app.get('/*', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'build', 'index.html'));
-})
+app.get("/*", (_req, res) => {
+  res.sendFile(path.join(__dirname, "build", "index.html"));
+});
 ```

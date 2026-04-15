@@ -1,64 +1,63 @@
-import React, { useState } from 'react';
-import { CardColumns, Spinner, Container } from 'react-bootstrap';
-import { Recipe } from '../types';
-import Preview from './Preview'
-import { useLocation } from 'react-router-dom';
-import axios from 'axios';
-import { apiBaseUrl } from '../constants';
-
-const useQuery = () => {
-    return new URLSearchParams(useLocation().search);
-  }
+import React, { useState } from "react";
+import { Row, Col, Spinner, Container } from "react-bootstrap";
+import { Recipe } from "../types";
+import Preview from "./Preview";
+import { useSearchParams } from "react-router-dom";
+import axios from "axios";
+import { apiBaseUrl } from "../constants";
 
 const SearchView: React.FC = () => {
-  const [ recipes, setRecipes ] = useState<Recipe[]>([]);
-  const [ searching, setSearching ] = useState(true);
-  const query = useQuery();
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [searching, setSearching] = useState(true);
+  const [searchParams] = useSearchParams();
+
+  const terms = searchParams.get("terms");
+  const queryType = searchParams.get("type");
 
   React.useEffect(() => {
-      const searchRecipes = async () => {
-          const terms = query.getAll("terms")
-          const queryType = query.getAll("type")
-          if (!terms || !queryType) {
-              setSearching(false);
-              setRecipes([]);
-          } else {
-              const recipes = await axios.get<Recipe[]>(`${apiBaseUrl}/search?type=${queryType}&terms=${terms}`)
-              if (recipes) {
-                  setRecipes(recipes.data);
-              }
-              setSearching(false);
-          }
+    const searchRecipes = async () => {
+      setSearching(true);
+      if (!terms || !queryType) {
+        setSearching(false);
+        setRecipes([]);
+        return;
       }
-      searchRecipes();
-      // eslint-disable-next-line
-  }, [])
+      const response = await axios.get<Recipe[]>(
+        `${apiBaseUrl}/search?type=${queryType}&terms=${encodeURIComponent(terms)}`,
+      );
+      if (response) {
+        setRecipes(response.data);
+      }
+      setSearching(false);
+    };
+    searchRecipes();
+  }, [terms, queryType]);
 
-  if (searching === true) {
-      return (
-          <Container style={{ marginTop: "20px"}}>
-              <Spinner animation="border" />
-          </Container>
-      )
-  } 
-  if (recipes.length === 0 && searching === false) {
-      return (
-          <div className="container" style={{ marginTop: "20px" }}>
-            <h2>No recipes found. Try again?</h2>
-          </div>
-
-      )
+  if (searching) {
+    return (
+      <Container style={{ marginTop: "20px" }}>
+        <Spinner animation="border" />
+      </Container>
+    );
+  }
+  if (recipes.length === 0) {
+    return (
+      <div className="container" style={{ marginTop: "20px" }}>
+        <h2>No recipes found. Try again?</h2>
+      </div>
+    );
   }
   return (
-      <Container style={{ marginTop: "20px"}}>
-        <CardColumns>
-            {
-                recipes.map((r: Recipe) => (
-                <Preview key={r.recipeId} recipe={r}/>
-            ))}
-        </CardColumns>
-      </Container>
-  )
-}
+    <Container style={{ marginTop: "20px" }}>
+      <Row xs={1} md={2} lg={3} className="g-4">
+        {recipes.map((r: Recipe) => (
+          <Col key={r.id}>
+            <Preview recipe={r} />
+          </Col>
+        ))}
+      </Row>
+    </Container>
+  );
+};
 
-export default SearchView
+export default SearchView;

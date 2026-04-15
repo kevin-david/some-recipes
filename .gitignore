@@ -1,1 +1,11 @@
 .vscode
+.claude/*.local.json
+node_modules/
+.env
+dist/
+.wrangler/
+.dev.vars
+
+infra/.terraform/
+infra/*.tfstate*
+infra/terraform.tfvars

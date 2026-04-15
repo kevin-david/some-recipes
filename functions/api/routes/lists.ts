@@ -1,41 +1,53 @@
-import express from 'express';
-import RecipeListSchema from '../models/RecipeListSchema';
+import { Hono } from "hono";
+import { authMiddleware } from "../middleware/auth";
+import { Env } from "../types";
+import * as listDb from "../db/lists";
+import { getRecipesByIds } from "../db/recipes";
 
-const listRouter = express.Router();
+const lists = new Hono<Env>();
 
-listRouter.get('/', async (_request, response) => {
-    const lists = await RecipeListSchema.find({});
-    response.json(lists.map(l => l.toJSON()));
-})
+lists.get("/", async (c) => {
+  const userId = c.req.query("user");
+  return c.json(
+    userId ? await listDb.getListsByUserId(c.env.DB, userId) : await listDb.getAllLists(c.env.DB),
+  );
+});
 
-listRouter.post('/', async (request, response) => {
-    const newRecipe = new RecipeListSchema({ ...request.body });
-    await newRecipe.save();
-    response.status(200).end();
-})
+lists.get("/:id", async (c) => {
+  const list = await listDb.getListById(c.env.DB, c.req.param("id"));
+  if (!list) {
+    return c.json({ error: "list not found" }, 404);
+  }
 
-listRouter.get('/:id', async (request, response) => {
-    const recipe = await RecipeListSchema.findById(request.params.id).populate('recipes');
-    if (recipe) {
-        response.json(recipe.toJSON());
-    } else {
-        response.status(404).end()
-    }
-})
+  const recipeIds: string[] = JSON.parse(list.recipes || "[]");
+  const recipes = await getRecipesByIds(c.env.DB, recipeIds);
 
-listRouter.put('/:id', async (request, response) => {
-    let list = await RecipeListSchema.findById(request.params.id);
-    if (!list) {
-        response.status(404).end()
-    }
+  return c.json({ id: list.id, title: list.title, userId: list.user_id, recipes });
+});
 
-    const newList = {
-        ...list?.toJSON(),
-        recipes: request.body.recipes.map((r: any) => r.id)
-    }
-    const returned = await RecipeListSchema.findByIdAndUpdate(request.params.id, newList, { new: true });
+lists.post("/", authMiddleware, async (c) => {
+  const body = await c.req.json();
+  const result = await listDb.createList(c.env.DB, c.get("userId"), body.title || "");
+  return c.json(result, 201);
+});
 
-    response.json(returned?.toJSON());
-})
+lists.put("/:id", authMiddleware, async (c) => {
+  const id = c.req.param("id");
+  const owner = await listDb.getListOwner(c.env.DB, id);
+  if (!owner) {
+    return c.json({ error: "list not found" }, 404);
+  }
+  if (owner.user_id !== c.get("userId")) {
+    return c.json({ error: "not authorized" }, 401);
+  }
 
-export default listRouter
+  const body = await c.req.json();
+  const recipeIds = (body.recipes || []).map((r: string | { id: string }) =>
+    typeof r === "string" ? r : r.id,
+  );
+
+  await listDb.updateListRecipes(c.env.DB, id, recipeIds);
+  return c.json({ id, recipes: recipeIds });
+});
+
+export default lists;

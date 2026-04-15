@@ -1,38 +1,26 @@
-import express from 'express';
-import logger from '../utils/logger';
-import RecipeSchema from '../models/RecipeSchema';
+import { Hono } from "hono";
+import { Bindings } from "../types";
+import { searchByTitle, searchByTags } from "../db/recipes";
 
-const searchRouter = express.Router();
+const search = new Hono<{ Bindings: Bindings }>();
 
-searchRouter.get('/', async (request, response) => {
-    logger.info(request.query);
-    let terms: string[] = []
-    if (request.query.terms) {
-        terms = request.query.terms.toString().split(' ');
-    } else {
-        response.status(404).json({ error: 'no specified terms'})
-    }
+search.get("/", async (c) => {
+  const type = c.req.query("type")?.toLowerCase();
+  const terms = c.req.query("terms");
 
-    if (request.query.type) {
-        switch (request.query.type.toString().toLowerCase()) {
-            case "tag":
-                logger.info('tag', request.query.terms);
-                const recipes = await RecipeSchema.find({ tags: { "$in": terms } }).limit(50);
-                if (!recipes) { response.json(null) }
-                response.json(recipes);
-                break;
-            case "title":
-                logger.info("title", request.query.terms);
-                const titleMatch = await RecipeSchema.find({ "title": { "$regex": request.query.terms as string, "$options": "i"}}).limit(50);
-                response.json(titleMatch);
-                break;
-            default:
-                logger.info(request.query.terms);
-        }
-    }
+  if (!terms) {
+    return c.json({ error: "no specified terms" }, 400);
+  }
 
-    response.status(200).end();
-})
+  if (type === "title") {
+    return c.json(await searchByTitle(c.env.DB, terms));
+  }
 
+  if (type === "tag" || type === "tags") {
+    return c.json(await searchByTags(c.env.DB, terms.split(" ")));
+  }
 
-export default searchRouter
+  return c.json({ error: "invalid search type, use 'title' or 'tag'" }, 400);
+});
+
+export default search;

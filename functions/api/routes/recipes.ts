@@ -1,72 +1,63 @@
-import { saveRecipePicture } from './../services/pictureService';
-import express from 'express';
-import RecipeSchema from '../models/RecipeSchema';
-import UserSchema from '../models/UserSchema';
-import logger from '../utils/logger';
-import jwt from 'jsonwebtoken';
-import { getRecipe, deleteRecipe, updateRecipe, createRecipe, getAllRecipes } from '../services/recipeService';
-import { isAuthorized } from '../services/authentication';
+import { Hono } from "hono";
+import { authMiddleware } from "../middleware/auth";
+import { Env } from "../types";
+import * as recipeDb from "../db/recipes";
+import { addRecipeToList } from "../db/lists";
 
-const recipeRouter = express.Router();
+const recipes = new Hono<Env>();
 
-recipeRouter.get('/', async (_req, response) => {
-    response.json(await getAllRecipes());
-})
-
-recipeRouter.post('/', async (request, response) => {
-    //console.log(request.file);
-    //console.log(request.body.file);
-    const recipe = await createRecipe(request.body, request.body.user.id);
-    if (recipe) {
-        //if (request.file) {
-        //    const url = await saveRecipePicture(recipe.recipeId, "recipe-container", request.file.buffer);
-        //    recipe.imageURL = url;
-        //    const updated = await updateRecipe(recipe.recipeId, recipe, request.body.user?.userId);
-        //    response.json(updated);
-        //    return;
-        //}
-        response.json(recipe);
-    } else {
-        response.status(500).end();
-    }
-})
-
-recipeRouter.get('/:id', async (request, response) => {
-    response.json(await getRecipe(request.params.id));
-})
-
-recipeRouter.put('/:id', async (request, response) => {
-    const recipe = await getRecipe(request.params.id);
-    //console.log(request.file);
-    //console.log(request.body.file);
-    if (recipe && recipe.user?.userId) {
-        const authorized = await isAuthorized(request, recipe.user.userId);
-        console.log(authorized);
-        if (authorized && recipe.user?.userId) {
-            //if (request.file) {
-            //    const url = await saveRecipePicture(recipe.recipeId, "recipe-container", request.file.buffer);
-            //    recipe.imageURL = url;
-            //}
-            const updated = await updateRecipe(recipe.recipeId, request.body.recipe, recipe.user?.userId);
-            response.json(updated);
-        }
-    }
-})
-
-recipeRouter.delete('/:id', async (request, response) => {
-    const recipe = await getRecipe(request.params.id);
-    if (recipe && recipe.user?.userId) {
-        const authorized = await isAuthorized(request, recipe.user.userId);
-        if (authorized) {
-            await deleteRecipe(recipe.recipeId);
-            response.json({ message: "deleted recipe" });
-        } else {
-            response.status(401).json({ error: "not authorized"}).end();
-        }
-    } else {
-        response.status(401).end();
-    }
+recipes.get("/", async (c) => {
+  const limit = parseInt(c.req.query("limit") || "50", 10);
+  return c.json(await recipeDb.listRecipes(c.env.DB, limit));
 });
 
+recipes.get("/:id", async (c) => {
+  const recipe = await recipeDb.getRecipeById(c.env.DB, c.req.param("id"));
+  if (!recipe) {
+    return c.json({ error: "recipe not found" }, 404);
+  }
+  return c.json(recipe);
+});
 
-export default recipeRouter
+recipes.post("/", authMiddleware, async (c) => {
+  const body = await c.req.json();
+  const userId = c.get("userId");
+  const id = crypto.randomUUID();
+
+  await recipeDb.createRecipe(c.env.DB, id, userId, body);
+  await addRecipeToList(c.env.DB, userId, "Uploads", id);
+
+  return c.json(await recipeDb.getRecipeById(c.env.DB, id), 201);
+});
+
+recipes.put("/:id", authMiddleware, async (c) => {
+  const id = c.req.param("id");
+  const owner = await recipeDb.getRecipeOwner(c.env.DB, id);
+  if (!owner) {
+    return c.json({ error: "recipe not found" }, 404);
+  }
+  if (owner.user_id !== c.get("userId")) {
+    return c.json({ error: "not authorized" }, 401);
+  }
+
+  const body = await c.req.json();
+  await recipeDb.updateRecipe(c.env.DB, id, body.recipe || body);
+
+  return c.json(await recipeDb.getRecipeById(c.env.DB, id));
+});
+
+recipes.delete("/:id", authMiddleware, async (c) => {
+  const id = c.req.param("id");
+  const owner = await recipeDb.getRecipeOwner(c.env.DB, id);
+  if (!owner) {
+    return c.json({ error: "recipe not found" }, 404);
+  }
+  if (owner.user_id !== c.get("userId")) {
+    return c.json({ error: "not authorized" }, 401);
+  }
+
+  await recipeDb.deleteRecipe(c.env.DB, id);
+  return c.json({ message: "deleted recipe" });
+});
+
+export default recipes;
